@@ -234,6 +234,21 @@ class LiteTableManager {
 
             displayLimitWrapper.appendChild(displayLimitLabel);
             displayLimitWrapper.appendChild(displayLimitSelect);
+
+            if (this.container.classList.contains('exportable')) {
+                const exportCSVBtn = document.createElement('button');
+                exportCSVBtn.type = 'button';
+                exportCSVBtn.className = 'lite-table-export-csv';
+                exportCSVBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:middle"><path d="M5 20h14v-2H5v2zm7-18v8h3l-4 4-4-4h3V2z"/></svg>';
+                exportCSVBtn.title = 'Exporter CSV';
+                exportCSVBtn.style.background = 'none';
+                exportCSVBtn.style.border = 'none';
+                exportCSVBtn.style.cursor = 'pointer';
+                exportCSVBtn.style.padding = '0 0 0 8px';
+                exportCSVBtn.addEventListener('click', () => this.exportToCSV());
+                displayLimitWrapper.appendChild(exportCSVBtn);
+            }
+
             filterContainer.appendChild(displayLimitWrapper);
         }
 
@@ -681,6 +696,42 @@ class LiteTableManager {
 
         this.rowPool = [];
         this.rowsCache = [];
+    }
+
+    /**
+     * Exports the currently filtered rows to a CSV file
+     */
+    exportToCSV() {
+        const headerRows = Array.from(this.table.tHead.rows);
+        const dataRows = this.filteredRows;
+        const escape = (v) => `"${(v || '').replace(/"/g, '""')}"`;
+
+        const headers = Array.from(headerRows[headerRows.length - 1].cells).map(cell =>
+            escape(cell.textContent.trim().replace(/\u00a0/g, ' '))
+        );
+
+        const rows = dataRows.map(rowData =>
+            rowData.cells.map(cell =>
+                escape(cell.innerHTML.replace(/<[^>]*>/g, '').trim().replace(/\u00a0/g, ' '))
+            )
+        );
+
+        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+
+        const now = new Date();
+        const pad = (n) => n.toString().padStart(2, '0');
+        const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+        const filename = `export-table-${dateStr}.csv`;
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
     }
 }
 
